@@ -1,0 +1,16 @@
+seed: 43
+
+max_epochs: 10
+
+base_model: "assets/resnet56.pt"
+
+data_root: "/home/chenyaofo/datasets/cifar10"
+
+batch_size: 256
+
+num_workers: 6
+
+num_gpus_per_nodes: 0
+
+lighting_trainer:
+    max_epochs: 30

@@ -1,26 +1,23 @@
-import imp
 import torch
 
 from pytorch_lightning import LightningModule, Trainer, seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from module import LitResnet
-from data import data_module
+from custom.module import KnowledgeDistillation
+from custom.data import data_module
 
-seed_everything(7)
+from conf import config
 
-AVAIL_GPUS = min(1, torch.cuda.device_count())
+seed_everything(config["seed"])
 
-
-lighting_module = LitResnet(lr=0.05)
+lighting_module = KnowledgeDistillation()
 setattr(lighting_module, "datamodule", data_module)
-# lighting_module.datamodule = data_module
 
 trainer = Trainer(
     progress_bar_refresh_rate=10,
-    max_epochs=30,
-    gpus=AVAIL_GPUS,
+    max_epochs=config["max_epochs"],
+    gpus=config["num_gpus_per_nodes"],
     logger=TensorBoardLogger("lightning_logs/", name="resnet"),
     callbacks=[LearningRateMonitor(logging_interval="step")],
 )

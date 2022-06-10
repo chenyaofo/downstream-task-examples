@@ -174,16 +174,34 @@ def cifar10_resnet20(*args, **kwargs) -> CifarResNet:
     return _resnet(
         arch="resnet20",
         layers=[3,3,3],
-        model_urls=None,
-        pretrained=False
+        model_urls=cifar10_pretrained_weight_urls,
+        pretrained=True
     )
-def cifar10_resnet32(*args, **kwargs) -> CifarResNet: pass
-def cifar10_resnet44(*args, **kwargs) -> CifarResNet: pass
-def cifar10_resnet56(*args, **kwargs) -> CifarResNet: pass
+def cifar10_resnet32(*args, **kwargs) -> CifarResNet:
+    return _resnet(
+        arch="resnet32",
+        layers=[5,5,5],
+        model_urls=cifar10_pretrained_weight_urls,
+        pretrained=True
+    )
+def cifar10_resnet44(*args, **kwargs) -> CifarResNet:
+    return _resnet(
+        arch="resnet44",
+        layers=[7,7,7],
+        model_urls=cifar10_pretrained_weight_urls,
+        pretrained=True
+    )
+def cifar10_resnet56(*args, **kwargs) -> CifarResNet:
+    return _resnet(
+        arch="resnet56",
+        layers=[9,9,9],
+        model_urls=cifar10_pretrained_weight_urls,
+        pretrained=True
+    )
 
 
 if __name__ == "__main__":
     import dill
     import torch
-    model = cifar10_resnet20()
-    torch.save(model, "resnet20.pt", pickle_module=dill)
+    model = cifar10_resnet56()
+    torch.save(model, "resnet56.pt", pickle_module=dill)

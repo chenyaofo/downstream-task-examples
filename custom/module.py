@@ -7,29 +7,41 @@ from torch.optim.swa_utils import AveragedModel, update_bn
 from torchmetrics.functional import accuracy
 from pytorch_lightning import LightningModule
 
-AVAIL_GPUS = min(1, torch.cuda.device_count())
-BATCH_SIZE = 256 if AVAIL_GPUS else 64
+from conf import config
+from .model.resnet import models
 
-def create_model():
+def get_base_model():
     import dill
-    model = torch.load("../resnet20.pt", pickle_module=dill)
+    model = torch.load(config["base_model"], pickle_module=dill)
     return model
 
-class LitResnet(LightningModule):
-    def __init__(self, lr=0.05):
+def get_student_model(name, **kwargs):
+    return models[name](**kwargs)
+
+def dist_loss(teacher_out, student_out, T=1):
+    prob_t = F.softmax(teacher_out/T, dim=1)
+    log_prob_s = F.log_softmax(student_out/T, dim=1)
+    dist_loss = -(prob_t*log_prob_s).sum(dim=1).mean()
+    return dist_loss
+
+class KnowledgeDistillation(LightningModule):
+    def __init__(self, lr=0.05, student="cifar10_resnet20"):
         super().__init__()
 
         self.save_hyperparameters()
-        self.model = create_model()
+        self.base_model = get_base_model()
+        self.student_model = get_student_model(student)
 
     def forward(self, x):
-        out = self.model(x)
+        out = self.student_model(x)
         return F.log_softmax(out, dim=1)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        logits = self(x)
-        loss = F.nll_loss(logits, y)
+        student_logits = self(x)
+        with torch.no_grad():
+            teacher_logits = self.base_model(x)
+        loss = F.nll_loss(student_logits, y) + dist_loss(teacher_logits, student_logits)
         self.log("train_loss", loss)
         return loss
 
@@ -52,12 +64,12 @@ class LitResnet(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
-            self.parameters(),
+            self.student_model.parameters(),
             lr=self.hparams.lr,
             momentum=0.9,
             weight_decay=5e-4,
         )
-        steps_per_epoch = 45000 // BATCH_SIZE
+        steps_per_epoch = 45000 // config["batch_size"]
         scheduler_dict = {
             "scheduler": OneCycleLR(
                 optimizer,
